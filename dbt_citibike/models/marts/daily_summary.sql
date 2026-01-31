@@ -19,6 +19,7 @@
 
 SELECT
     trip_date,
+    AVG(temperature_f) AS avg_temperature_f,
 
     -- Trip counts
     SUM(num_trips) AS num_trips,

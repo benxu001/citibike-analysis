@@ -12,6 +12,9 @@ env/
 .venv/
 *.egg-info/
 
+# Logs
+logs/
+
 # DBT artifacts
 dbt_citibike/target/
 dbt_citibike/dbt_packages/

@@ -5,15 +5,15 @@ An end-to-end data pipeline that ingests NYC CitiBike trip data and weather data
 ## Architecture
 
 ```
-                                    +------------------+
-                                    |   CitiBike S3    |
-                                    |   (Trip Data)    |
-                                    +--------+---------+
+                                 +----------------------+
+                                 |      CitiBike S3     |
+                                 |      (Trip Data)     |
+                                 +-----------+----------+
                                              |
                                              v
 +------------------+              +----------+----------+
-|   Open-Meteo    |              |                     |
-|  (Weather API)   +------------>+   Python Ingestion  |
+|   Open-Meteo     |              |                     |
+|  (Weather API)   +------------> +   Python Ingestion  |
 +------------------+              |                     |
                                   +----------+----------+
                                              |
@@ -41,18 +41,19 @@ An end-to-end data pipeline that ingests NYC CitiBike trip data and weather data
                                   |                     |
                                   +---------------------+
 
-         Orchestrated by GitHub Actions (monthly schedule)
+                      Orchestrated by GitHub Actions (monthly schedule)
 ```
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
-| Orchestration | Apache Airflow (Docker) |
+| Orchestration | GitHub Actions or Apache Airflow (Docker) |
 | Data Warehouse | Google BigQuery |
 | Transformations | dbt (Data Build Tool) |
 | Ingestion | Python |
 | Infrastructure | Docker, Docker Compose |
+| Dashboard | Looker Studio |
 
 ## Project Structure
 
@@ -122,84 +123,91 @@ An Airflow setup is also included in `airflow/` for local development or self-ho
 - **Weather Data**: [Open-Meteo Archive API](https://open-meteo.com/)
   - Hourly temperature, precipitation, cloud cover for NYC
 
-## Getting Started
+## Data Warehouse Design
 
-### Prerequisites
+### Dataset Structure
 
-- Python 3.11+
-- Google Cloud account with BigQuery enabled
-- GCP service account with BigQuery Data Editor and Job User roles
+| Layer | Tables | Materialization | Purpose |
+|-------|--------|-----------------|---------|
+| Raw | `trips`, `weather` | Tables | Source data loaded from Python |
+| Staging | `stg_trips`, `stg_weather` | Views | Clean/cast types, no storage cost |
+| Intermediate | `int_trips_with_weather` | Ephemeral | Business logic, compiled inline |
+| Marts | `daily_summary`, `hourly_summary`, `station_stats` | Tables | Analytics-ready aggregations |
 
-### Setup (GitHub Actions - Recommended)
+### Partitioning & Clustering
 
-1. **Fork/clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/citibike-pipeline.git
-   cd citibike-pipeline
-   ```
+The `trips` table (~90M rows, ~8GB) uses BigQuery optimizations:
 
-2. **Add GCP credentials to GitHub Secrets**
-   - Go to your repo → Settings → Secrets and variables → Actions
-   - Create a new secret named `GCP_CREDENTIALS`
-   - Paste the entire contents of your service account JSON key
+```sql
+-- Partition by day (most queries filter by date range)
+PARTITION BY DATE(started_at)
 
-3. **Enable GitHub Actions**
-   - Go to Actions tab and enable workflows
-   - The pipeline will run automatically on the 10th of each month
-   - Or trigger manually: Actions → Monthly CitiBike Pipeline → Run workflow
-
-### Setup (Local Development)
-
-1. **Install dependencies**
-   ```bash
-   pip install google-cloud-bigquery pandas pyarrow requests python-dateutil tqdm dbt-bigquery
-   ```
-
-2. **Configure dbt profile** (`~/.dbt/profiles.yml`)
-   ```yaml
-   citibike:
-     target: dev
-     outputs:
-       dev:
-         type: bigquery
-         method: service-account
-         project: your-gcp-project
-         dataset: citibike
-         keyfile: /path/to/service-account.json
-   ```
-
-3. **Set GCP credentials**
-   ```bash
-   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
-   ```
-
-### Running the Pipeline
-
-**Via GitHub Actions:**
-- Runs automatically on schedule, or trigger manually from the Actions tab
-
-**Manual run (local):**
-```bash
-cd python
-python run_monthly_pipeline.py                     # Process previous month
-python run_monthly_pipeline.py --year 2025 --month 12  # Specific month
+-- Cluster by common filter/group columns
+CLUSTER BY start_station_id, member_casual
 ```
 
-**Manual dbt run:**
-```bash
-cd dbt_citibike
-dbt run
-dbt test
-```
+**Why this matters:**
+- Queries filtering by date only scan relevant partitions (e.g., 1 month = ~4M rows instead of 90M)
+- Clustering improves performance for station-level and member-type analysis
+- Reduces query costs by 10-50x for typical analytical queries
 
-### Alternative: Airflow (Docker)
+### Cost Controls
 
-For local orchestration with a UI, use the Airflow setup:
-```bash
-cd airflow
-docker compose up -d
-# Access UI at http://localhost:8080 (airflow/airflow)
-```
+- **Staging models are views** - No storage cost, computed on read
+- **Intermediate models are ephemeral** - Compiled inline, no table created
+- **Partitioning** - Queries scan only relevant date ranges
+- **BigQuery sandbox** - 1TB free queries/month, 10GB free storage
+- **Monthly pipeline** - Only ~4M new rows/month, minimal incremental cost
+
+Estimated monthly cost: **< $1** (well within free tier for typical usage)
+
+## Data Quality
+
+### dbt Tests
+
+50 tests run on every pipeline execution:
+
+| Test Type | Examples |
+|-----------|----------|
+| `unique` | `ride_id` in trips, `datetime` in weather, `trip_date` in daily_summary |
+| `not_null` | All primary keys, timestamps, required dimensions |
+| `accepted_values` | `rideable_type` in (electric_bike, classic_bike, docked_bike), `member_casual` in (member, casual) |
+
+### Known Data Quirks (Handled)
+
+| Issue | How it's handled |
+|-------|------------------|
+| **Missing station names/IDs** | ~2% of trips have null stations (dockless rides). Filtered out in `trips_cleaned` mart. |
+| **Negative/zero duration trips** | Some trips have `ended_at <= started_at`. Filtered out with `duration > 0` in marts. |
+| **Weather data gaps** | Weather joined on truncated hour. Nulls allowed in weather columns for trips without matching weather data. |
+
+### Pipeline Failure Conditions
+
+The GitHub Action fails (and alerts via GitHub notification) if:
+
+- **Data unavailable** - CitiBike hasn't published the month's data yet
+- **BigQuery errors** - Authentication, quota, or schema issues
+- **dbt test failures** - Any `unique`, `not_null`, or `accepted_values` test fails
+- **dbt model errors** - SQL compilation or execution errors
+
+Failed runs can be manually retried from the Actions tab after fixing the issue.
+
+## Infrastructure
+
+**Google Cloud Platform**
+- Created a GCP project with BigQuery enabled
+- Service account with BigQuery Data Editor and Job User roles
+- Raw data stored in `citibike.trips` (~90M rows) and `citibike.weather` tables
+
+**GitHub Actions**
+- Runs the monthly pipeline automatically on the 10th of each month
+- Service account credentials stored securely as a repository secret
+- Triggers: Python ingestion → BigQuery load → dbt transformations → dbt tests
+
+**Local Development**
+- Python scripts can be run locally with `python run_monthly_pipeline.py`
+- An Airflow setup is included in `airflow/` for local orchestration with a web UI
+- dbt models can be run independently with `dbt run && dbt test`
 
 ## Dashboard
 
