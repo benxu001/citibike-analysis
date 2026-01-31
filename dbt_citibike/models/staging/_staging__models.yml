@@ -1,0 +1,37 @@
+version: 2
+
+models:
+  - name: stg_trips
+    description: "Staged trips data with date filter applied (from {{ var('start_date') }})"
+    columns:
+      - name: ride_id
+        description: "Unique trip identifier"
+        tests:
+          - not_null
+      - name: started_at
+        description: "Trip start timestamp"
+        tests:
+          - not_null
+      - name: ended_at
+        description: "Trip end timestamp"
+        tests:
+          - not_null
+      - name: rideable_type
+        description: "Type of bike used"
+      - name: member_casual
+        description: "User type"
+
+  - name: stg_weather
+    description: "Staged hourly weather data for NYC"
+    columns:
+      - name: datetime
+        description: "Hour timestamp"
+        tests:
+          - unique
+          - not_null
+      - name: temperature_f
+        description: "Temperature in Fahrenheit"
+      - name: precipitation_mm
+        description: "Precipitation in millimeters"
+      - name: conditions
+        description: "Weather condition category"

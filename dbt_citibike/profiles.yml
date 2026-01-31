@@ -1,0 +1,15 @@
+# This file can be used locally or copied to ~/.dbt/profiles.yml
+# For local development, this file will be used automatically if it exists
+# in the dbt project directory
+
+citibike:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth
+      project: citibike-portfolio
+      dataset: citibike
+      location: US
+      threads: 4
+      timeout_seconds: 300

@@ -1,0 +1,168 @@
+version: 2
+
+models:
+  - name: trips_cleaned
+    description: >
+      Cleaned and enriched trip data with weather information.
+      This is the primary analytical table for trip-level analysis.
+      Partitioned by trip_date for efficient date-range queries.
+    columns:
+      - name: trip_date
+        description: "Date of the trip (extracted from started_at)"
+        tests:
+          - not_null
+      - name: duration_minutes
+        description: "Trip duration in minutes"
+        tests:
+          - not_null
+      - name: started_at
+        description: "Trip start timestamp"
+        tests:
+          - not_null
+      - name: ended_at
+        description: "Trip end timestamp"
+        tests:
+          - not_null
+      - name: start_station_name
+        description: "Name of starting station"
+        tests:
+          - not_null
+      - name: end_station_name
+        description: "Name of ending station"
+        tests:
+          - not_null
+      - name: rideable_type
+        description: "Type of bike (electric_bike, classic_bike)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['electric_bike', 'classic_bike', 'docked_bike']
+      - name: member_casual
+        description: "User type (member or casual)"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['member', 'casual']
+      - name: hour_of_day
+        description: "Hour of day (0-23)"
+        tests:
+          - not_null
+      - name: day_of_week
+        description: "Day of week (1=Sunday, 7=Saturday)"
+        tests:
+          - not_null
+      - name: day_name
+        description: "Name of day of week"
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      - name: temperature_f
+        description: "Temperature at trip start in Fahrenheit (may be null)"
+      - name: precipitation_mm
+        description: "Precipitation at trip start in millimeters (may be null)"
+      - name: conditions
+        description: "Weather conditions at trip start (may be null)"
+
+  - name: hourly_summary
+    description: >
+      Hourly aggregated trip statistics with weather context.
+      Use this table for analyzing hourly patterns and weather impact on ridership.
+      Partitioned by trip_date (monthly granularity) for efficient queries.
+    columns:
+      - name: trip_date
+        description: "Date"
+        tests:
+          - not_null
+      - name: hour_of_day
+        description: "Hour of day (0-23)"
+        tests:
+          - not_null
+      - name: num_trips
+        description: "Total number of trips"
+        tests:
+          - not_null
+      - name: member_trips
+        description: "Number of trips by members"
+        tests:
+          - not_null
+      - name: casual_trips
+        description: "Number of trips by casual users"
+        tests:
+          - not_null
+      - name: electric_trips
+        description: "Number of electric bike trips"
+        tests:
+          - not_null
+      - name: classic_trips
+        description: "Number of classic bike trips"
+        tests:
+          - not_null
+      - name: total_minutes
+        description: "Total trip duration in minutes"
+        tests:
+          - not_null
+
+  - name: daily_summary
+    description: >
+      Daily aggregated trip statistics.
+      Use this table for high-level trend analysis and daily comparisons.
+      Partitioned by trip_date (monthly granularity) for efficient queries.
+    columns:
+      - name: trip_date
+        description: "Date"
+        tests:
+          - not_null
+          - unique
+      - name: num_trips
+        description: "Total number of trips"
+        tests:
+          - not_null
+      - name: member_trips
+        description: "Number of trips by members"
+        tests:
+          - not_null
+      - name: casual_trips
+        description: "Number of trips by casual users"
+        tests:
+          - not_null
+      - name: total_minutes
+        description: "Total trip duration in minutes"
+        tests:
+          - not_null
+
+  - name: station_stats
+    description: >
+      Station-level trip statistics.
+      Use this table for analyzing station traffic patterns, identifying
+      high-activity stations, and detecting flow imbalances.
+    columns:
+      - name: station_name
+        description: "Name of the station"
+        tests:
+          - not_null
+          - unique
+      - name: latitude
+        description: "Station latitude"
+        tests:
+          - not_null
+      - name: longitude
+        description: "Station longitude"
+        tests:
+          - not_null
+      - name: trips_started
+        description: "Number of trips originating from this station"
+        tests:
+          - not_null
+      - name: trips_ended
+        description: "Number of trips ending at this station"
+        tests:
+          - not_null
+      - name: total_activity
+        description: "Total trips (started + ended)"
+        tests:
+          - not_null
+      - name: net_flow
+        description: "Net flow (started - ended). Positive = more pickups, negative = more dropoffs"
+        tests:
+          - not_null

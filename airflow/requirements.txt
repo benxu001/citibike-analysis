@@ -1,0 +1,14 @@
+# BigQuery (for your Python code)
+google-cloud-bigquery>=3.11.0
+google-cloud-bigquery-storage>=2.22.0
+
+# Data processing
+pandas>=2.0.0
+pyarrow>=14.0.0
+
+# Utilities
+requests>=2.31.0
+tqdm>=4.66.0
+
+# DBT
+dbt-bigquery>=1.7.0

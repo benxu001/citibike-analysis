@@ -1,0 +1,38 @@
+# Data files (large CSVs and zips)
+data/raw/
+data/*.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+
+# DBT artifacts
+dbt_citibike/target/
+dbt_citibike/dbt_packages/
+dbt_citibike/logs/
+
+# Airflow
+airflow/logs/
+airflow/config/gcp-credentials.json
+airflow/.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Credentials and secrets
+*credentials*.json
+*service-account*.json
+secrets/

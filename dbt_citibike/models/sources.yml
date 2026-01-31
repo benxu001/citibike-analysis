@@ -1,0 +1,71 @@
+version: 2
+
+sources:
+  - name: citibike_raw
+    database: citibike-portfolio
+    schema: citibike
+    description: "Raw CitiBike data loaded via Python scripts"
+
+    tables:
+      - name: trips
+        description: "Raw trip data from CitiBike S3 bucket"
+        columns:
+          - name: ride_id
+            description: "Unique identifier for each trip"
+            tests:
+              - unique
+              - not_null
+          - name: rideable_type
+            description: "Type of bike (electric_bike, classic_bike, docked_bike)"
+            tests:
+              - accepted_values:
+                  values: ['electric_bike', 'classic_bike', 'docked_bike']
+          - name: started_at
+            description: "Trip start timestamp"
+            tests:
+              - not_null
+          - name: ended_at
+            description: "Trip end timestamp"
+            tests:
+              - not_null
+          - name: start_station_name
+            description: "Name of starting station"
+          - name: start_station_id
+            description: "ID of starting station"
+          - name: end_station_name
+            description: "Name of ending station"
+          - name: end_station_id
+            description: "ID of ending station"
+          - name: start_lat
+            description: "Starting latitude"
+          - name: start_lng
+            description: "Starting longitude"
+          - name: end_lat
+            description: "Ending latitude"
+          - name: end_lng
+            description: "Ending longitude"
+          - name: member_casual
+            description: "User type (member or casual)"
+            tests:
+              - accepted_values:
+                  values: ['member', 'casual']
+
+      - name: weather
+        description: "Hourly weather data for NYC from Open-Meteo API"
+        columns:
+          - name: datetime
+            description: "Hour timestamp"
+            tests:
+              - unique
+              - not_null
+          - name: temperature_f
+            description: "Temperature in Fahrenheit"
+          - name: precipitation_mm
+            description: "Precipitation in millimeters"
+          - name: cloud_cover_pct
+            description: "Cloud cover percentage (0-100)"
+          - name: conditions
+            description: "Weather condition category"
+            tests:
+              - accepted_values:
+                  values: ['Sunny', 'Partly Cloudy', 'Cloudy', 'Unknown']

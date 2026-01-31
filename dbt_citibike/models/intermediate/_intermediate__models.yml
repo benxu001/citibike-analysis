@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: int_trips_with_weather
+    description: >
+      Intermediate model joining trips with hourly weather data.
+      Uses LEFT JOIN to preserve all trips even if weather data is missing.
+      Join is performed on hour-truncated trip start time.
+    columns:
+      - name: ride_id
+        description: "Unique trip identifier"
+      - name: temperature_f
+        description: "Temperature at trip start (may be null if weather data missing)"
+      - name: precipitation_mm
+        description: "Precipitation at trip start (may be null if weather data missing)"
+      - name: conditions
+        description: "Weather conditions at trip start (may be null if weather data missing)"
