@@ -1,0 +1,84 @@
+name: Monthly CitiBike Pipeline
+
+on:
+  # Run on the 10th of every month at 6:00 AM UTC
+  schedule:
+    - cron: '0 6 10 * *'
+
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      year:
+        description: 'Target year (leave empty for previous month)'
+        required: false
+        type: string
+      month:
+        description: 'Target month (leave empty for previous month)'
+        required: false
+        type: string
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install google-cloud-bigquery google-cloud-bigquery-storage pandas pyarrow requests python-dateutil tqdm
+
+      - name: Install dbt
+        run: |
+          pip install dbt-bigquery
+
+      - name: Authenticate with Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_CREDENTIALS }}
+
+      - name: Set up dbt profile
+        run: |
+          mkdir -p ~/.dbt
+          cat > ~/.dbt/profiles.yml << 'EOF'
+          citibike:
+            target: prod
+            outputs:
+              prod:
+                type: bigquery
+                method: oauth
+                project: citibike-portfolio
+                dataset: citibike
+                threads: 4
+                timeout_seconds: 300
+          EOF
+
+      - name: Run monthly pipeline
+        working-directory: python
+        run: |
+          if [ -n "${{ github.event.inputs.year }}" ] && [ -n "${{ github.event.inputs.month }}" ]; then
+            python run_monthly_pipeline.py --year ${{ github.event.inputs.year }} --month ${{ github.event.inputs.month }}
+          else
+            python run_monthly_pipeline.py
+          fi
+
+      - name: Pipeline Summary
+        if: always()
+        run: |
+          echo "## Pipeline Run Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Run date**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ github.event.inputs.year }}" ]; then
+            echo "- **Target month**: ${{ github.event.inputs.year }}-${{ github.event.inputs.month }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- **Target month**: Previous month (auto-calculated)" >> $GITHUB_STEP_SUMMARY
+          fi

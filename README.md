@@ -41,7 +41,7 @@ An end-to-end data pipeline that ingests NYC CitiBike trip data and weather data
                                   |                     |
                                   +---------------------+
 
-         Orchestrated by Apache Airflow (monthly schedule)
+         Orchestrated by GitHub Actions (monthly schedule)
 ```
 
 ## Tech Stack
@@ -58,7 +58,9 @@ An end-to-end data pipeline that ingests NYC CitiBike trip data and weather data
 
 ```
 citibike/
-├── airflow/                    # Airflow orchestration
+├── .github/workflows/          # GitHub Actions
+│   └── monthly_pipeline.yml    # Scheduled monthly pipeline
+├── airflow/                    # Airflow orchestration (alternative)
 │   ├── dags/                   # DAG definitions
 │   ├── docker-compose.yaml     # Airflow Docker setup
 │   └── Dockerfile              # Custom Airflow image
@@ -71,15 +73,16 @@ citibike/
 │   ├── fetch_citibike_data.py  # Download from S3
 │   ├── load_trips_to_bigquery.py
 │   ├── load_weather_to_bigquery.py
-│   └── airflow_utils.py        # Airflow helper functions
+│   ├── airflow_utils.py        # Incremental loading utilities
+│   └── run_monthly_pipeline.py # Monthly pipeline script
 └── data/                       # Local data (gitignored)
 ```
 
 ## Data Pipeline
 
-### Monthly Pipeline (Airflow DAG)
+### Monthly Pipeline (GitHub Actions)
 
-Runs on the 10th of every month to process the previous month's data:
+Automated via GitHub Actions, runs on the 10th of every month at 6:00 AM UTC:
 
 1. **Check Data Availability** - Verify CitiBike has published the month's data
 2. **Download Trip Data** - Fetch from CitiBike's S3 bucket
@@ -88,6 +91,12 @@ Runs on the 10th of every month to process the previous month's data:
 5. **Fetch Weather** - Get hourly weather from Open-Meteo API
 6. **Load Weather** - Insert weather data into BigQuery
 7. **Run dbt** - Execute transformations and tests
+
+The pipeline can also be triggered manually via GitHub Actions with optional year/month parameters.
+
+### Alternative: Airflow (Docker)
+
+An Airflow setup is also included in `airflow/` for local development or self-hosted orchestration.
 
 ### dbt Models
 
@@ -117,24 +126,36 @@ Runs on the 10th of every month to process the previous month's data:
 
 ### Prerequisites
 
-- Docker and Docker Compose
+- Python 3.11+
 - Google Cloud account with BigQuery enabled
 - GCP service account with BigQuery Data Editor and Job User roles
 
-### Setup
+### Setup (GitHub Actions - Recommended)
 
-1. **Clone the repository**
+1. **Fork/clone the repository**
    ```bash
    git clone https://github.com/yourusername/citibike-pipeline.git
    cd citibike-pipeline
    ```
 
-2. **Add GCP credentials**
+2. **Add GCP credentials to GitHub Secrets**
+   - Go to your repo → Settings → Secrets and variables → Actions
+   - Create a new secret named `GCP_CREDENTIALS`
+   - Paste the entire contents of your service account JSON key
+
+3. **Enable GitHub Actions**
+   - Go to Actions tab and enable workflows
+   - The pipeline will run automatically on the 10th of each month
+   - Or trigger manually: Actions → Monthly CitiBike Pipeline → Run workflow
+
+### Setup (Local Development)
+
+1. **Install dependencies**
    ```bash
-   cp /path/to/your-service-account.json airflow/config/gcp-credentials.json
+   pip install google-cloud-bigquery pandas pyarrow requests python-dateutil tqdm dbt-bigquery
    ```
 
-3. **Configure dbt profile** (`~/.dbt/profiles.yml`)
+2. **Configure dbt profile** (`~/.dbt/profiles.yml`)
    ```yaml
    citibike:
      target: dev
@@ -147,28 +168,37 @@ Runs on the 10th of every month to process the previous month's data:
          keyfile: /path/to/service-account.json
    ```
 
-4. **Start Airflow**
+3. **Set GCP credentials**
    ```bash
-   cd airflow
-   docker compose up -d
+   export GOOGLE_APPLICATION_CREDENTIALS=/path/to/service-account.json
    ```
-
-5. **Access Airflow UI**
-   - URL: http://localhost:8080
-   - Username: `airflow`
-   - Password: `airflow`
 
 ### Running the Pipeline
 
-**Via Airflow UI:**
-- Enable the `citibike_monthly_pipeline` DAG
-- Trigger manually or wait for scheduled run
+**Via GitHub Actions:**
+- Runs automatically on schedule, or trigger manually from the Actions tab
+
+**Manual run (local):**
+```bash
+cd python
+python run_monthly_pipeline.py                     # Process previous month
+python run_monthly_pipeline.py --year 2025 --month 12  # Specific month
+```
 
 **Manual dbt run:**
 ```bash
 cd dbt_citibike
 dbt run
 dbt test
+```
+
+### Alternative: Airflow (Docker)
+
+For local orchestration with a UI, use the Airflow setup:
+```bash
+cd airflow
+docker compose up -d
+# Access UI at http://localhost:8080 (airflow/airflow)
 ```
 
 ## Dashboard
