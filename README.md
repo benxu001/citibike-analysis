@@ -79,6 +79,16 @@ citibike/
 └── data/                       # Local data (gitignored)
 ```
 
+## Data Sources
+
+- **CitiBike Trip Data**: [s3.amazonaws.com/tripdata](https://s3.amazonaws.com/tripdata/)
+  - ~90 million trips (Jan 2024 - Dec 2025)
+  - Fields: ride_id, timestamps, stations, coordinates, member type
+
+- **Weather Data**: [Open-Meteo Archive API](https://open-meteo.com/)
+  - Hourly temperature, precipitation, cloud cover for NYC
+
+
 ## Data Pipeline
 
 ### Monthly Pipeline (GitHub Actions)
@@ -95,9 +105,23 @@ Automated via GitHub Actions, runs on the 10th of every month at 6:00 AM UTC:
 
 The pipeline can also be triggered manually via GitHub Actions with optional year/month parameters.
 
+### Pipeline Failure Conditions
+
+The GitHub Action fails (and alerts via GitHub notification) if:
+
+- **Data unavailable** - CitiBike hasn't published the month's data yet
+- **BigQuery errors** - Authentication, quota, or schema issues
+- **dbt test failures** - Any `unique`, `not_null`, or `accepted_values` test fails
+- **dbt model errors** - SQL compilation or execution errors
+
+Failed runs can be manually retried from the Actions tab after fixing the issue.
+
+
+
 ### Alternative: Airflow (Docker)
 
 An Airflow setup is also included in `airflow/` for local development or self-hosted orchestration.
+
 
 ### dbt Models
 
@@ -114,14 +138,7 @@ An Airflow setup is also included in `airflow/` for local development or self-ho
 - `hourly_summary` - Hourly patterns for time-of-day analysis
 - `station_stats` - Station-level metrics (popularity, net flow)
 
-## Data Sources
 
-- **CitiBike Trip Data**: [s3.amazonaws.com/tripdata](https://s3.amazonaws.com/tripdata/)
-  - ~90 million trips (Jan 2024 - Dec 2025)
-  - Fields: ride_id, timestamps, stations, coordinates, member type
-
-- **Weather Data**: [Open-Meteo Archive API](https://open-meteo.com/)
-  - Hourly temperature, precipitation, cloud cover for NYC
 
 ## Data Warehouse Design
 
@@ -132,34 +149,12 @@ An Airflow setup is also included in `airflow/` for local development or self-ho
 | Raw | `trips`, `weather` | Tables | Source data loaded from Python |
 | Staging | `stg_trips`, `stg_weather` | Views | Clean/cast types, no storage cost |
 | Intermediate | `int_trips_with_weather` | Ephemeral | Business logic, compiled inline |
-| Marts | `daily_summary`, `hourly_summary`, `station_stats` | Tables | Analytics-ready aggregations |
+| Marts | `trips_cleaned`, `daily_summary`, `hourly_summary`, `station_stats` | Tables | Analytics-ready aggregations |
 
-### Partitioning & Clustering
 
-The `trips` table (~90M rows, ~8GB) uses BigQuery optimizations:
+**Partitioning**: The `trips` and `trips_cleaned` tables (~90M rows, ~12GB) are partitioned by date, which allows for efficient, low cost querying. 
 
-```sql
--- Partition by day (most queries filter by date range)
-PARTITION BY DATE(started_at)
 
--- Cluster by common filter/group columns
-CLUSTER BY start_station_id, member_casual
-```
-
-**Why this matters:**
-- Queries filtering by date only scan relevant partitions (e.g., 1 month = ~4M rows instead of 90M)
-- Clustering improves performance for station-level and member-type analysis
-- Reduces query costs by 10-50x for typical analytical queries
-
-### Cost Controls
-
-- **Staging models are views** - No storage cost, computed on read
-- **Intermediate models are ephemeral** - Compiled inline, no table created
-- **Partitioning** - Queries scan only relevant date ranges
-- **BigQuery sandbox** - 1TB free queries/month, 10GB free storage
-- **Monthly pipeline** - Only ~4M new rows/month, minimal incremental cost
-
-Estimated monthly cost: **< $1** (well within free tier for typical usage)
 
 ## Data Quality
 
@@ -179,18 +174,8 @@ Estimated monthly cost: **< $1** (well within free tier for typical usage)
 |-------|------------------|
 | **Missing station names/IDs** | ~2% of trips have null stations (dockless rides). Filtered out in `trips_cleaned` mart. |
 | **Negative/zero duration trips** | Some trips have `ended_at <= started_at`. Filtered out with `duration > 0` in marts. |
-| **Weather data gaps** | Weather joined on truncated hour. Nulls allowed in weather columns for trips without matching weather data. |
 
-### Pipeline Failure Conditions
 
-The GitHub Action fails (and alerts via GitHub notification) if:
-
-- **Data unavailable** - CitiBike hasn't published the month's data yet
-- **BigQuery errors** - Authentication, quota, or schema issues
-- **dbt test failures** - Any `unique`, `not_null`, or `accepted_values` test fails
-- **dbt model errors** - SQL compilation or execution errors
-
-Failed runs can be manually retried from the Actions tab after fixing the issue.
 
 ## Infrastructure
 
@@ -220,30 +205,20 @@ Interactive dashboard with four views:
 - **Weather Impact** - Correlation between ridership/trip duration and temperature, precipitation, cloud cover
 - **Station Analysis** - Top 10 busiest stations, net flow patterns, and geographic heatmap of activity
 
-Key insights from the data:
+<img width="1201" height="900" alt="image" src="https://github.com/user-attachments/assets/751c1684-e504-4485-b77a-61e56ce7b9ee" />
+<img width="1200" height="898" alt="image" src="https://github.com/user-attachments/assets/4c7345c1-fa82-41f2-a878-d4b84d0623f8" />
+<img width="1198" height="897" alt="image" src="https://github.com/user-attachments/assets/968e8b59-0905-4217-921f-f5f9028e625a" />
+<img width="1197" height="896" alt="image" src="https://github.com/user-attachments/assets/4b172b28-5ff5-4203-ab15-cf8838cc2bdf" />
+
+
+
+
+### Key Insights
 - 90M+ trips analyzed across 2024-2025
-- Clear commuter patterns with peaks at 8AM and 5-6PM
-- Members account for 82% of trips but casual riders take longer trips on weekends
-- Ridership correlates strongly with temperature
+- More trips and longer duration trips during during the summer.
+- Clear commuter patterns for members with peaks at 8AM and 5-6PM. Significantly smaller commuter pattern for casual riders.
+- Casual riders take significantly longer trips at all times. 
+- Ridership correlates strongly with temperature. However, there is a dip in rides when the temperature is too high (over 75 degrees).
+- There is surprisingly limited correlation between rain and trip length. 
 
-## Sample Queries
 
-```sql
--- Daily trip trends
-SELECT trip_date, num_trips, avg_duration_minutes
-FROM `your-project.citibike.daily_summary`
-ORDER BY trip_date;
-
--- Busiest stations
-SELECT station_name, total_activity, net_flow
-FROM `your-project.citibike.station_stats`
-ORDER BY total_activity DESC
-LIMIT 10;
-
--- Weather impact on ridership
-SELECT
-  conditions,
-  AVG(num_trips) as avg_daily_trips
-FROM `your-project.citibike.daily_summary`
-GROUP BY conditions;
-```
