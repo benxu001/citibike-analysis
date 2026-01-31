@@ -92,7 +92,7 @@ citibike/
 
 - **CitiBike Trip Data**: [s3.amazonaws.com/tripdata](https://s3.amazonaws.com/tripdata/)
   - ~90 million trips (Jan 2024 - Dec 2025)
-  - Fields: ride_id, timestamps, stations, coordinates, member type
+  - New monthly data beginning Jan 2026 will be ingested. 
 
 - **Weather Data**: [Open-Meteo Archive API](https://open-meteo.com/)
   - Hourly temperature, precipitation, cloud cover for NYC
@@ -220,6 +220,7 @@ Interactive dashboard with four views:
 - Target high-frequency casual riders with time-bound **membership conversion** offers
 - Prioritize **dock expansion** at consistently high-utilization stations
 - Incorporate weather forecasts into demand planning and rebalancing operations
+
 
 
 
