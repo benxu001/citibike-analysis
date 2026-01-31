@@ -190,13 +190,15 @@ An Airflow setup is also included in `airflow/` for local development or self-ho
 
 **[View Live Dashboard on Looker Studio](https://lookerstudio.google.com/s/vHzwlner2zU)**
 
-Interactive dashboard with four views:
+Interactive dashboard with five views:
 
 - **Overview** - KPIs (total trips, daily average, member percentage) and time series trends
 - **Trip Patterns** - Analysis by day of week and hour, segmented by member type and bike type
 - **Weather Impact** - Correlation between ridership/trip duration and temperature, precipitation, cloud cover
 - **Station Analysis** - Top 10 busiest stations, net flow patterns, and geographic heatmap of activity
 - **Daily Summary Table** - Full daily summary table
+
+Note that data and charts can be filtered by clicking into charts, such as clicking on bars or clicking and dragging between dates on a line chart.
 
 <img width="1201" height="900" alt="image" src="https://github.com/user-attachments/assets/751c1684-e504-4485-b77a-61e56ce7b9ee" />
 <img width="1200" height="898" alt="image" src="https://github.com/user-attachments/assets/4c7345c1-fa82-41f2-a878-d4b84d0623f8" />
@@ -220,6 +222,7 @@ Interactive dashboard with four views:
 - Target high-frequency casual riders with time-bound **membership conversion** offers
 - Prioritize **dock expansion** at consistently high-utilization stations
 - Incorporate weather forecasts into demand planning and rebalancing operations
+
 
 
 
