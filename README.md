@@ -1,6 +1,16 @@
-# CitiBike Data Pipeline
+# CitiBike Usage Analytics and Automated Pipeline
 
-An end-to-end data pipeline that ingests NYC CitiBike trip data and weather data, transforms it using dbt, and orchestrates monthly updates with Airflow.
+An end-to-end data pipeline and analytics project for NYC Citi Bike trip data, with automated data ingestion, dbt transformation, an interactive dashboard, and orchestration with Github Actions.
+
+
+## Motivation
+
+Citi Bike releases trip history data monthly but lacks a systematic automated reporting workflow. This project builds an end-to-end data pipeline to ingest, model, and analyze CitiBike usage to answer questions like:
+- How do usage patterns vary by hour/day?
+- How do member vs casual riders differ?
+- How does weather impact ridership?
+
+
 
 ## Architecture
 
@@ -12,34 +22,33 @@ An end-to-end data pipeline that ingests NYC CitiBike trip data and weather data
                                              |
                                              v
 +------------------+              +----------+----------+
-|   Open-Meteo     |              |                     |
-|  (Weather API)   +------------> +   Python Ingestion  |
-+------------------+              |                     |
-                                  +----------+----------+
-                                             |
+|   Open-Meteo     |------------> +   Python Ingestion  |
+|  (Weather API)   +              +----------+----------+
++------------------+                         |
                                              v
                                   +----------+----------+
-                                  |                     |
                                   |   Google BigQuery   |
                                   |   (Data Warehouse)  |
-                                  |                     |
                                   +----------+----------+
                                              |
                                              v
                                   +----------+----------+
-                                  |                     |
-                                  |    dbt Models       |
+                                  |     dbt Models      |
                                   |  (Transformations)  |
-                                  |                     |
                                   +----------+----------+
                                              |
                                              v
                                   +----------+----------+
-                                  |                     |
                                   |   Analytics Layer   |
                                   |   (Marts Tables)    |
-                                  |                     |
                                   +---------------------+
+                                             |
+                                             v
+                                  +----------+----------+
+                                  |      Dashboard      |
+                                  |   (Looker Studio)   |
+                                  +---------------------+
+                                             
 
                       Orchestrated by GitHub Actions (monthly schedule)
 ```
@@ -177,23 +186,6 @@ An Airflow setup is also included in `airflow/` for local development or self-ho
 
 
 
-## Infrastructure
-
-**Google Cloud Platform**
-- Created a GCP project with BigQuery enabled
-- Service account with BigQuery Data Editor and Job User roles
-- Raw data stored in `citibike.trips` (~90M rows) and `citibike.weather` tables
-
-**GitHub Actions**
-- Runs the monthly pipeline automatically on the 10th of each month
-- Service account credentials stored securely as a repository secret
-- Triggers: Python ingestion → BigQuery load → dbt transformations → dbt tests
-
-**Local Development**
-- Python scripts can be run locally with `python run_monthly_pipeline.py`
-- An Airflow setup is included in `airflow/` for local orchestration with a web UI
-- dbt models can be run independently with `dbt run && dbt test`
-
 ## Dashboard
 
 **[View Live Dashboard on Looker Studio](https://lookerstudio.google.com/s/vHzwlner2zU)**
@@ -204,6 +196,7 @@ Interactive dashboard with four views:
 - **Trip Patterns** - Analysis by day of week and hour, segmented by member type and bike type
 - **Weather Impact** - Correlation between ridership/trip duration and temperature, precipitation, cloud cover
 - **Station Analysis** - Top 10 busiest stations, net flow patterns, and geographic heatmap of activity
+- **Daily Summary Table** - Full daily summary table
 
 <img width="1201" height="900" alt="image" src="https://github.com/user-attachments/assets/751c1684-e504-4485-b77a-61e56ce7b9ee" />
 <img width="1200" height="898" alt="image" src="https://github.com/user-attachments/assets/4c7345c1-fa82-41f2-a878-d4b84d0623f8" />
@@ -214,11 +207,19 @@ Interactive dashboard with four views:
 
 
 ### Key Insights
-- 90M+ trips analyzed across 2024-2025
+- **~90M** trips analyzed across 2024-2025
 - More trips and longer duration trips during during the summer.
-- Clear commuter patterns for members with peaks at 8AM and 5-6PM. Significantly smaller commuter pattern for casual riders.
+- **Clear commuter patterns** for members with peaks at 8AM and 5-6PM. Significantly smaller commuter pattern for casual riders.
 - Casual riders take significantly longer trips at all times. 
-- Ridership correlates strongly with temperature. However, there is a dip in rides when the temperature is too high (over 75 degrees).
+- Ridership correlates strongly with **temperature**. However, there is a dip in rides when the temperature is too high (over 75 degrees).
 - There is surprisingly limited correlation between rain and trip length. 
+
+### Business Recommendations
+
+- Optimize bike **rebalancing** schedules based on weekday vs weekend, and daily commute usage patterns
+- Target high-frequency casual riders with time-bound **membership conversion** offers
+- Prioritize **dock expansion** at consistently high-utilization stations
+- Incorporate weather forecasts into demand planning and rebalancing operations
+
 
 
