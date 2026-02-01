@@ -188,7 +188,7 @@ An Airflow setup is also included in `airflow/` for local development or self-ho
 
 ## Dashboard
 
-**[View Live Dashboard on Looker Studio](https://lookerstudio.google.com/s/vHzwlner2zU)**
+**[View Live Dashboard on Looker Studio](https://lookerstudio.google.com/reporting/27aca34b-9fe8-46ea-8346-15ec7982ba7d/page/p_4u6i9cag0d)**
 
 Interactive dashboard with five views:
 
@@ -222,6 +222,7 @@ Note that data and charts can be filtered by clicking into charts, such as click
 - Target high-frequency casual riders with time-bound **membership conversion** offers
 - Prioritize **dock expansion** at consistently high-utilization stations
 - Incorporate weather forecasts into demand planning and rebalancing operations
+
 
 
 
