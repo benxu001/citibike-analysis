@@ -59,7 +59,7 @@ Citi Bike releases trip history data monthly but lacks a systematic automated re
 |-----------|------------|
 | Orchestration | GitHub Actions or Apache Airflow (Docker) |
 | Data Warehouse | Google BigQuery |
-| Transformations | dbt (Data Build Tool) |
+| Transformations | dbt (Data Build Tool), SQL |
 | Ingestion | Python |
 | Infrastructure | Docker, Docker Compose |
 | Dashboard | Looker Studio |
@@ -222,6 +222,7 @@ Note that data and charts can be filtered by clicking into charts, such as click
 - Target high-frequency casual riders with time-bound **membership conversion** offers
 - Prioritize **dock expansion** at consistently high-utilization stations
 - Incorporate weather forecasts into demand planning and rebalancing operations
+
 
 
 
