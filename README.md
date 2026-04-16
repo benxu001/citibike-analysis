@@ -1,6 +1,6 @@
 # CitiBike Usage Analytics and Automated Pipeline
 
-An end-to-end data pipeline and analytics project for NYC Citi Bike trip data, with automated data ingestion, dbt transformation, an interactive dashboard, and orchestration with Github Actions.
+An end-to-end data pipeline and analytics project for NYC Citi Bike trip data, with automated data ingestion, dbt transformation, an interactive dashboard, an AI-powered natural language query app, and orchestration with Github Actions.
 
 
 ## Motivation
@@ -48,7 +48,11 @@ Citi Bike releases trip history data monthly but lacks a systematic automated re
                                   |      Dashboard      |
                                   |   (Looker Studio)   |
                                   +---------------------+
-                                             
+
+                                  +----------+----------+
+                                  |   NL Query App      |
+                                  | (Streamlit + Claude) |
+                                  +---------------------+
 
                       Orchestrated by GitHub Actions (monthly schedule)
 ```
@@ -63,6 +67,7 @@ Citi Bike releases trip history data monthly but lacks a systematic automated re
 | Ingestion | Python |
 | Infrastructure | Docker, Docker Compose |
 | Dashboard | Looker Studio |
+| AI Query App | Streamlit, Claude API (tool use) |
 
 ## Project Structure
 
@@ -79,6 +84,9 @@ citibike/
 │       ├── staging/            # Raw data cleaning
 │       ├── intermediate/       # Business logic
 │       └── marts/              # Analytics tables
+├── streamlit/                  # AI-powered query app
+│   ├── app.py                  # Streamlit + Claude tool use
+│   └── requirements.txt        # App dependencies
 ├── python/                     # Data ingestion scripts
 │   ├── fetch_citibike_data.py  # Download from S3
 │   ├── load_trips_to_bigquery.py
@@ -184,6 +192,26 @@ An Airflow setup is also included in `airflow/` for local development or self-ho
 | **Missing station names/IDs** | ~2% of trips have null stations (dockless rides). Filtered out in `trips_cleaned` mart. |
 | **Negative/zero duration trips** | Some trips have `ended_at <= started_at`. Filtered out with `duration > 0` in marts. |
 
+
+
+## Natural Language Query App
+
+**[Try the Live App](https://citibike-explorer.streamlit.app)**
+
+A Streamlit web app that lets users ask natural language questions about CitiBike data and get instant, data-backed answers.
+
+**How it works:**
+1. User types a question (e.g., "What was the busiest day in 2024?")
+2. Claude (via the Anthropic API with tool use) generates SQL and executes it against BigQuery
+3. Claude analyzes the results and may run follow-up queries for deeper analysis
+4. The user receives a plain-English answer with key numbers
+
+**Built with:**
+- **Streamlit** for the web interface (hosted on Streamlit Community Cloud)
+- **Claude API with tool use** for agentic SQL generation — Claude can run multiple queries, reason about results, and self-correct errors
+- **BigQuery** as the live data source, querying the same mart tables built by the automated pipeline
+
+The app requires no manual updates when new data arrives. The monthly GitHub Actions pipeline loads data and rebuilds dbt marts; the app queries BigQuery directly, so it always reflects the latest data.
 
 
 ## Dashboard
