@@ -3,6 +3,7 @@
 An end-to-end data pipeline and analytics project for NYC Citi Bike trip data, with automated data ingestion, dbt transformation, an interactive dashboard, an AI-powered natural language query app, and orchestration with Github Actions.
 
 **[View Live Dashboard on Looker Studio](https://lookerstudio.google.com/reporting/27aca34b-9fe8-46ea-8346-15ec7982ba7d/page/p_4u6i9cag0d)**
+
 **[Try the Live App](https://citibike-explorer.streamlit.app)**
 
 ## Motivation
