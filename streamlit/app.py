@@ -98,7 +98,13 @@ TOOLS = [
 BLOCKED_KEYWORDS = [
     "DELETE", "DROP", "INSERT", "UPDATE", "CREATE",
     "ALTER", "TRUNCATE", "MERGE", "GRANT", "REVOKE",
+    "CALL", "EXPORT", "LOAD",
 ]
+
+# Hard cap on BigQuery bytes billed per query (100 MB). Defense against
+# LLM-generated or prompt-injected queries that scan the full dataset.
+MAX_BYTES_BILLED = 100 * 1024 * 1024
+QUERY_TIMEOUT_SECONDS = 30
 
 # ---------------------------------------------------------------------------
 # Clients (cached so they're created once per app session)
@@ -134,7 +140,13 @@ def run_sql_query(sql: str) -> str:
 
     try:
         client = get_bq_client()
-        result = client.query(sql).result()
+        job_config = bigquery.QueryJobConfig(
+            maximum_bytes_billed=MAX_BYTES_BILLED,
+            use_query_cache=True,
+        )
+        result = client.query(sql, job_config=job_config, timeout=QUERY_TIMEOUT_SECONDS).result(
+            timeout=QUERY_TIMEOUT_SECONDS
+        )
         rows = [dict(row) for row in result]
 
         if not rows:
