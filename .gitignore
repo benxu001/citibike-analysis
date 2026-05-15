@@ -19,6 +19,7 @@ logs/
 dbt_citibike/target/
 dbt_citibike/dbt_packages/
 dbt_citibike/logs/
+dbt_citibike/.user.yml
 
 # Airflow
 airflow/logs/
