@@ -45,6 +45,23 @@ def get_target_month(execution_date: date) -> tuple:
     return target.year, target.month
 
 
+def get_latest_loaded_month() -> tuple:
+    """
+    Return the (year, month) of the most recent month loaded into BigQuery.
+
+    Uses ended_at to match how CitiBike organizes their files (see
+    delete_trips_for_month). Returns None if the trips table is empty.
+    """
+    client = bigquery.Client(project=PROJECT_ID)
+
+    query = f"SELECT MAX(DATE(ended_at)) AS max_ended FROM `{TRIPS_TABLE_ID}`"
+    row = next(iter(client.query(query).result()), None)
+    if row is None or row.max_ended is None:
+        return None
+
+    return row.max_ended.year, row.max_ended.month
+
+
 def check_citibike_data_available(year: int, month: int) -> bool:
     """
     Check if CitiBike data is available for the given month.

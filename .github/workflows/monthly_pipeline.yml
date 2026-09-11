@@ -1,19 +1,21 @@
 name: Monthly CitiBike Pipeline
 
 on:
-  # Run on the 10th of every month at 6:00 AM UTC
+  # Run on the 15th of every month at 6:00 AM UTC.
+  # CitiBike has published as late as the 12th; the pipeline also catches up
+  # on any earlier months that were missed.
   schedule:
-    - cron: '0 6 10 * *'
+    - cron: '0 6 15 * *'
 
   # Allow manual trigger
   workflow_dispatch:
     inputs:
       year:
-        description: 'Target year (leave empty for previous month)'
+        description: 'Target year (leave empty to catch up on all missing months)'
         required: false
         type: string
       month:
-        description: 'Target month (leave empty for previous month)'
+        description: 'Target month (leave empty to catch up on all missing months)'
         required: false
         type: string
 
@@ -80,5 +82,5 @@ jobs:
           if [ -n "${{ github.event.inputs.year }}" ]; then
             echo "- **Target month**: ${{ github.event.inputs.year }}-${{ github.event.inputs.month }}" >> $GITHUB_STEP_SUMMARY
           else
-            echo "- **Target month**: Previous month (auto-calculated)" >> $GITHUB_STEP_SUMMARY
+            echo "- **Target month**: Catch-up from latest month in BigQuery" >> $GITHUB_STEP_SUMMARY
           fi

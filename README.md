@@ -113,23 +113,23 @@ citibike/
 
 ### Monthly Pipeline (GitHub Actions)
 
-Automated via GitHub Actions, runs on the 10th of every month at 6:00 AM UTC:
+Automated via GitHub Actions, runs on the 15th of every month at 6:00 AM UTC:
 
-1. **Check Data Availability** - Verify CitiBike has published the month's data
-2. **Download Trip Data** - Fetch from CitiBike's S3 bucket
+1. **Check Data Availability** - Find the latest month in BigQuery and check which later months CitiBike has published
+2. **Download Trip Data** - Fetch from CitiBike's S3 bucket (each missing month in turn)
 3. **Delete Existing Data** - Remove old data for the month (idempotent reload)
 4. **Load Trips** - Insert trip data into BigQuery
 5. **Fetch Weather** - Get hourly weather from Open-Meteo API
 6. **Load Weather** - Insert weather data into BigQuery
 7. **Run dbt** - Execute transformations and tests
 
-The pipeline can also be triggered manually via GitHub Actions with optional year/month parameters.
+The pipeline is self-healing: a month that CitiBike publishes late is picked up automatically on the next scheduled run. It can also be triggered manually via GitHub Actions with optional year/month parameters to reload a specific month.
 
 ### Pipeline Failure Conditions
 
 The GitHub Action fails (and alerts via GitHub notification) if:
 
-- **Data unavailable** - CitiBike hasn't published the month's data yet
+- **Data unavailable** - CitiBike hasn't published any of the missing months yet
 - **BigQuery errors** - Authentication, quota, or schema issues
 - **dbt test failures** - Any `unique`, `not_null`, or `accepted_values` test fails
 - **dbt model errors** - SQL compilation or execution errors
